@@ -9,6 +9,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="BuyBye">
+<script>
+/* Google sign-in only works on the origin that matches authDomain, so the
+   app has one canonical home. An older GitHub Pages copy, or a Home Screen
+   icon saved from it, would otherwise keep failing in a way that looks like
+   a bug in the app. Send it somewhere that works. */
+(function () {
+  var CANONICAL = 'buybye-6aef3.web.app';
+  if (location.hostname !== CANONICAL && /github\.io$/.test(location.hostname)) {
+    location.replace('https://' + CANONICAL + '/' + location.search + location.hash);
+  }
+})();
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <!-- iOS ignores SVG here, so the Home Screen needs a real bitmap. -->
 <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">

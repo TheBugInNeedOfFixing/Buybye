@@ -160,17 +160,41 @@ Times are evaluated in **the user's own timezone**, recorded by the app when
 it saves the schedule. Without that a cloud runner would read its own UTC
 clock and fire a 9:00 PM reminder at the wrong hour.
 
-## Putting it on your phone
+## Hosting
 
-You need HTTPS. `firebase deploy` needs Node, so use one of these instead:
+The app lives at **https://buybye-6aef3.web.app** on Firebase Hosting.
 
-- **GitHub Pages** — git is already installed. Push this folder to a repo,
-  then Settings → Pages → deploy from branch. Free HTTPS.
-- **Cloudflare Pages** or **Netlify Drop** — drag the folder onto the page.
+That domain is not incidental. Google sign-in only survives if the app is
+served from the same origin as `authDomain`. Hosted anywhere else, Safari
+treats the sign-in handshake as cross-site, discards the session on the way
+back, and reports **no error at all** — `getRedirectResult` simply returns
+empty, so the app appears to bounce off the login screen for no reason. Any
+host is fine for a guest-only build; only sign-in cares.
 
-Then add the Firebase authorized domain (step 7 above), open the site on your
-phone, and use Share → *Add to Home Screen*. That last step is what unlocks
-push on iOS.
+Deploy with:
+
+```bash
+python deploy.py
+```
+
+It talks to the Hosting REST API directly, so no Node toolchain is needed,
+and takes credentials exactly as `notify.py` does. `--dry-run` lists what
+would be uploaded. `.github/workflows/deploy.yml` runs the same script on
+every push to `main`, so there is one deploy path rather than two that can
+drift apart.
+
+Cache headers are set at the origin: app code must revalidate, images may
+sit in cache for a week. This matters more than it sounds. GitHub Pages sent
+`max-age=600` for everything, and a service worker's own `fetch` is answered
+from the browser HTTP cache — so a fix could deploy successfully while the
+app kept running the broken build for another ten minutes.
+
+Anything still loading the old GitHub Pages copy is redirected to the
+canonical origin by a guard in `index.html`, so a stale Home Screen icon
+recovers by itself rather than failing to sign in forever.
+
+To put it on your phone: open the site in Safari, then Share → *Add to Home
+Screen*. That step is what unlocks push notifications on iOS.
 
 ## One file instead of many
 
