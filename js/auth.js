@@ -81,9 +81,13 @@ App.auth = (function () {
      Safari tab may block the window, and an installed app has nowhere to
      put it. Redirect is the safer path for anything touch-driven. */
   function prefersRedirect() {
-    var mobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
-    var touch = navigator.maxTouchPoints > 1;
-    return mobile || touch || isStandalone();
+    var ua = navigator.userAgent;
+    var mobile = /iPhone|iPod|Android|iPad/i.test(ua);
+    /* iPadOS 13+ reports itself as a Mac, so touch points are the only
+       reliable tell. Plain touchscreen laptops must not match here, or
+       desktop loses the popup flow for no reason. */
+    var iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    return mobile || iPadOS || isStandalone();
   }
 
   var ERROR_KEY = 'buybye.authError';
@@ -117,7 +121,7 @@ App.auth = (function () {
      Translate the ones this app can realistically hit. */
   var EXPLAIN = {
     'auth/unauthorized-domain':
-      'This web address is not on the project's authorized domain list.',
+      'This web address is not on the authorized domain list for this project.',
     'auth/web-storage-unsupported':
       'The browser is blocking the storage the sign-in needs. Private browsing, ' +
       'or blocked cross-site data, will both do this.',
