@@ -9,9 +9,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="BuyBye">
-<link rel="manifest" href="assets/manifest.webmanifest">
-<link rel="apple-touch-icon" href="assets/icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- iOS ignores SVG here, so the Home Screen needs a real bitmap. -->
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="icon" sizes="192x192" href="assets/icon-192.png" type="image/png">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">
 </head>

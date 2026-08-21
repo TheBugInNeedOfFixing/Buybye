@@ -1,13 +1,13 @@
 /* BuyBye service worker: offline shell + push display. */
-var CACHE = 'buybye-v1';
+var CACHE = 'buybye-v2';
 var SHELL = [
   './', './index.html',
   './css/base.css', './css/components.css',
   './js/format.js', './js/finance.js', './js/store.js', './js/ui.js',
   './js/auth.js', './js/sync.js', './js/push.js', './js/onboarding.js',
   './js/budget.js', './js/worthit.js', './js/daily.js', './js/insights.js',
-  './js/settings.js', './js/app.js',
-  './assets/manifest.webmanifest', './assets/icon.svg'
+  './js/settings.js', './js/app.js', './js/firebase-config.js',
+  './manifest.webmanifest', './assets/icon.svg', './assets/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', function (e) {
