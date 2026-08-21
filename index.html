@@ -15,8 +15,9 @@
    icon saved from it, would otherwise keep failing in a way that looks like
    a bug in the app. Send it somewhere that works. */
 (function () {
-  var CANONICAL = 'buybye-6aef3.web.app';
-  if (location.hostname !== CANONICAL && /github\.io$/.test(location.hostname)) {
+  var CANONICAL = 'buybye-6aef3.firebaseapp.com';
+  var STRAYS = /(github\.io|\.web\.app)$/;
+  if (location.hostname !== CANONICAL && STRAYS.test(location.hostname)) {
     location.replace('https://' + CANONICAL + '/' + location.search + location.hash);
   }
 })();

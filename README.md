@@ -162,14 +162,26 @@ clock and fire a 9:00 PM reminder at the wrong hour.
 
 ## Hosting
 
-The app lives at **https://buybye-6aef3.web.app** on Firebase Hosting.
+The app lives at **https://buybye-6aef3.firebaseapp.com** on Firebase Hosting.
 
-That domain is not incidental. Google sign-in only survives if the app is
-served from the same origin as `authDomain`. Hosted anywhere else, Safari
+That domain is not incidental, and it is specifically `firebaseapp.com`
+rather than the `web.app` name for the same site. Two constraints have to
+hold at once.
+
+Google sign-in only survives if the app is served from the same origin as
+`authDomain`. Hosted anywhere else, Safari
 treats the sign-in handshake as cross-site, discards the session on the way
 back, and reports **no error at all** — `getRedirectResult` simply returns
 empty, so the app appears to bounce off the login screen for no reason. Any
 host is fine for a guest-only build; only sign-in cares.
+
+And `authDomain` has to be a domain registered as an OAuth redirect URI.
+Firebase pre-registers `https://<project>.firebaseapp.com/__/auth/handler`
+and nothing else, so pointing `authDomain` at the `web.app` name instead
+fails at Google with *Access blocked: this app's request is invalid*. Both
+names serve the same Hosting site, so using `firebaseapp.com` for both the
+app and `authDomain` satisfies both constraints with no OAuth client
+changes. Anyone arriving on `web.app` is redirected.
 
 Deploy with:
 

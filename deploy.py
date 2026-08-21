@@ -165,7 +165,7 @@ def main():
     if r.status_code != 200:
         fail(f'release failed ({r.status_code}): {r.text[:300]}')
 
-    print(f'live at https://{SITE}.web.app')
+    print(f'live at https://{SITE}.firebaseapp.com')
 
 
 if __name__ == '__main__':
