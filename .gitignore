@@ -1,4 +1,7 @@
-js/firebase-config.js
+# The Firebase web config is NOT ignored: it must ship with the site for
+# sign-in to work, and those keys are public by design. Firestore rules
+# and the authorized-domain list are what actually secure the project.
+# The service account key below is a real secret and must never be committed.
 serviceAccount.json
 dist/
 __pycache__/

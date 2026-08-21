@@ -66,15 +66,21 @@ Optional. Without it everything works, just only on this device.
 4. **Project settings → General → Your apps → Web app (`</>`)**. Register the
    app and copy the `firebaseConfig` values.
 5. Paste them into `js/firebase-config.js` (copy `js/firebase-config.example.js`
-   if it isn't there). That file is gitignored so your keys stay out of git.
+   if it isn't there). Commit it — it has to ship with the site for sign-in to
+   work, and these keys are public by design: they name your project rather
+   than granting access to it. The Firestore rules below and the authorized
+   domain list are what actually protect your data.
 6. **Project settings → Cloud Messaging → Web Push certificates → Generate key
    pair**, and put that value in the same file as `vapidKey`.
 7. Under **Authentication → Settings → Authorized domains**, add wherever you
    host it. `localhost` is already allowed.
 
-`js/firebase-config.js` is the only file that ever holds real keys. The
-messaging service worker is handed its config at registration time, so
-nothing secret needs committing.
+`js/firebase-config.js` is the only file that holds these values — the
+messaging service worker is handed its config at registration time rather
+than keeping a second copy.
+
+The one genuine secret is `serviceAccount.json` for `notify.py`. That grants
+full admin access to the project and is gitignored; never commit it.
 
 Lock Firestore down so each person only reaches their own data:
 
