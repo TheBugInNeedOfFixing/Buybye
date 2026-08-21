@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>BuyBye</title>
+<meta name="description" content="Know what things really cost you.">
+<meta name="theme-color" content="#fafafa">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BuyBye">
+<link rel="manifest" href="assets/manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon.svg">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div id="app">
+  <div id="banner-host"></div>
+
+  <div id="screen-auth"       class="screen"></div>
+  <div id="screen-onboarding" class="screen"></div>
+
+  <div id="screen-insights" class="screen"></div>
+  <div id="screen-worthit"  class="screen"></div>
+  <div id="screen-budget"   class="screen"></div>
+  <div id="screen-daily"    class="screen"></div>
+  <div id="screen-settings" class="screen"></div>
+
+  <div id="screen-wishlist" class="screen"></div>
+
+  <nav class="tabbar hidden" id="tabbar">
+    <button data-tab="insights" aria-current="false">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      <span>Insights</span>
+    </button>
+    <button data-tab="worthit" aria-current="false">
+      <svg viewBox="0 0 24 24"><path d="M6 8h12l1.2 12H4.8L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+      <span>Worth it</span>
+    </button>
+    <button data-tab="budget" aria-current="false">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="14" rx="3"/><path d="M17 12h.01"/></svg>
+      <span>Budget</span>
+    </button>
+    <button data-tab="daily" aria-current="false">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M8 3v3M16 3v3M3.5 10h17"/></svg>
+      <span>Daily</span>
+    </button>
+    <button data-tab="settings" aria-current="false">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+</div>
+
+<!-- Firebase is optional. If these fail to load, or no keys are set, the
+     app runs as a local guest with everything except sign-in and push. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+
+<script src="js/format.js"></script>
+<script src="js/finance.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/push.js"></script>
+<script src="js/onboarding.js"></script>
+<script src="js/budget.js"></script>
+<script src="js/worthit.js"></script>
+<script src="js/daily.js"></script>
+<script src="js/insights.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

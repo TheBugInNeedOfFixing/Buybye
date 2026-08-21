@@ -1,0 +1,6 @@
+js/firebase-config.js
+serviceAccount.json
+dist/
+__pycache__/
+*.pyc
+.env
