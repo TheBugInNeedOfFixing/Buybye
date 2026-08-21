@@ -146,6 +146,25 @@ App.push = (function () {
     });
   }
 
+  /* The messaging service worker cannot read the page's config, so it is
+     handed over as query parameters. That keeps every real key inside the
+     one gitignored file instead of a committed one. */
+  function messagingWorker() {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+    var c = window.FIREBASE_CONFIG || {};
+    if (!c.apiKey || !c.projectId) return Promise.resolve(null);
+
+    var params = new URLSearchParams({
+      apiKey:            c.apiKey || '',
+      authDomain:        c.authDomain || '',
+      projectId:         c.projectId || '',
+      storageBucket:     c.storageBucket || '',
+      messagingSenderId: c.messagingSenderId || '',
+      appId:             c.appId || ''
+    });
+    return navigator.serviceWorker.register('firebase-messaging-sw.js?' + params.toString());
+  }
+
   /* Registers this device for Web Push and stores the token beside the
      user schedule so notify.py can find it. No-ops without Firebase. */
   function registerToken() {
@@ -154,7 +173,12 @@ App.push = (function () {
       if (!messaging) return null;
       var key = (window.FIREBASE_CONFIG || {}).vapidKey;
       if (!key) return null;
-      return messaging.getToken({ vapidKey: key }).then(function (token) {
+
+      return messagingWorker().then(function (registration) {
+        var opts = { vapidKey: key };
+        if (registration) opts.serviceWorkerRegistration = registration;
+        return messaging.getToken(opts);
+      }).then(function (token) {
         if (token && App.sync && App.sync.saveToken) App.sync.saveToken(token);
         return token;
       });

@@ -72,6 +72,10 @@ Optional. Without it everything works, just only on this device.
 7. Under **Authentication → Settings → Authorized domains**, add wherever you
    host it. `localhost` is already allowed.
 
+`js/firebase-config.js` is the only file that ever holds real keys. The
+messaging service worker is handed its config at registration time, so
+nothing secret needs committing.
+
 Lock Firestore down so each person only reaches their own data:
 
 ```
@@ -169,7 +173,7 @@ js/insights.js          stats
 js/settings.js          settings, account, data
 js/app.js               routing and boot
 sw.js                   offline cache + push display
-firebase-messaging-sw.js  FCM background handler (needs your keys too)
+firebase-messaging-sw.js  FCM background handler (gets config from push.js)
 notify.py               scheduled push sender
 build.py                single-file bundler
 ```
