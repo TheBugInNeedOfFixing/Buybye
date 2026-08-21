@@ -163,7 +163,12 @@ App.app = (function () {
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-    navigator.serviceWorker.register('sw.js').catch(function (e) {
+    /* updateViaCache:'none' stops the browser serving sw.js itself from
+       its HTTP cache, which would otherwise pin a stale worker for ten
+       minutes after every deploy. */
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+      .then(function (reg) { reg.update(); })
+      .catch(function (e) {
       console.warn('service worker not registered:', e && e.message);
     });
   }

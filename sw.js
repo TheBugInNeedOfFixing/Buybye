@@ -1,5 +1,5 @@
 /* BuyBye service worker: offline shell + push display. */
-var CACHE = 'buybye-v2';
+var CACHE = 'buybye-v3';
 var SHELL = [
   './', './index.html',
   './css/base.css', './css/components.css',
@@ -36,8 +36,20 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET') return;
   if (new URL(req.url).origin !== location.origin) return;
 
+  /* GitHub Pages serves app files with max-age=600, and a plain fetch()
+     inside a service worker is answered from the browser HTTP cache. That
+     made "network first" quietly return ten-minute-old code. Asking for a
+     revalidation sends a conditional request instead: usually a cheap 304,
+     but never stale. */
+  var path = new URL(req.url).pathname;
+  var isCode = /[.](?:js|css|html|webmanifest|json)$/i.test(path) ||
+               req.mode === 'navigate' || path.slice(-1) === '/';
+  var hit = isCode
+    ? new Request(req.url, { cache: 'no-cache', credentials: 'same-origin' })
+    : req;
+
   e.respondWith(
-    fetch(req).then(function (res) {
+    fetch(hit).then(function (res) {
       var copy = res.clone();
       caches.open(CACHE).then(function (c) { c.put(req, copy); });
       return res;
