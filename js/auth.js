@@ -82,6 +82,9 @@ App.auth = (function () {
         })
         .catch(function (e) {
           clearPending();
+          /* A half-finished redirect from a previous attempt keeps throwing
+             this on every load until its leftovers are cleared. */
+          if (e && e.code === 'auth/missing-initial-state') scrubRedirectState();
           recordError('redirect', e);
           notifyError();
         });
@@ -94,22 +97,31 @@ App.auth = (function () {
     }
   }
 
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
   function isStandalone() {
     return window.navigator.standalone === true ||
       (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   }
 
-  /* Popups are unreliable on phones generally, not just installed iOS: a
-     Safari tab may block the window, and an installed app has nowhere to
-     put it. Redirect is the safer path for anything touch-driven. */
+  /* Popup is the default everywhere, which is the opposite of the usual
+     advice and deliberate here.
+
+     signInWithRedirect keeps its pending state in sessionStorage. Inside an
+     installed iOS app, navigating to accounts.google.com leaves the app and
+     lands in Safari, so the flow returns to a different context whose
+     sessionStorage never held that state — Firebase then reports "missing
+     initial state" and the sign-in cannot complete. No configuration fixes
+     that; the redirect simply comes back somewhere else.
+
+     A popup stays within the app and, now that authDomain matches the app
+     origin, talks back to its opener first-party. Redirect remains the
+     fallback for browsers that refuse to open one at all. */
   function prefersRedirect() {
-    var ua = navigator.userAgent;
-    var mobile = /iPhone|iPod|Android|iPad/i.test(ua);
-    /* iPadOS 13+ reports itself as a Mac, so touch points are the only
-       reliable tell. Plain touchscreen laptops must not match here, or
-       desktop loses the popup flow for no reason. */
-    var iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-    return mobile || iPadOS || isStandalone();
+    return false;
   }
 
   var ERROR_KEY = 'buybye.authError';
@@ -125,6 +137,19 @@ App.auth = (function () {
          fast return, and would read as false if returned as a number. */
       return age >= 0 && age < 600000;
     } catch (e) { return false; }
+  }
+
+  /* Firebase parks pending-redirect bookkeeping in session and local
+     storage. If the flow returned somewhere that cannot see it, those keys
+     are dead weight that re-triggers the same error on every load. */
+  function scrubRedirectState() {
+    [sessionStorage, localStorage].forEach(function (store) {
+      try {
+        Object.keys(store)
+          .filter(function (k) { return k.indexOf('firebase:pendingRedirect') === 0; })
+          .forEach(function (k) { store.removeItem(k); });
+      } catch (e) {}
+    });
   }
 
   function clearPending() {
@@ -192,6 +217,12 @@ App.auth = (function () {
       'The browser came back from Google without keeping the sign-in session. ' +
       'Safari blocks the cross-site storage this needs when the app and the ' +
       'sign-in service sit on different domains.',
+    'auth/popup-blocked-in-app':
+      'The installed app could not open the sign-in window. Open the same ' +
+      'address in Safari, sign in there, then reopen the installed app.',
+    'auth/missing-initial-state':
+      'The sign-in returned to a different browser context than it started ' +
+      'in, so the session it set up was not there to collect.',
     'auth/internal-error':
       'Firebase reported an internal error completing the sign-in.'
   };
@@ -223,12 +254,36 @@ App.auth = (function () {
       });
     }
     return firebase.auth().signInWithPopup(provider).catch(function (e) {
-      /* Some desktop setups block the popup; fall back rather than dead-end. */
-      if (e && (e.code === 'auth/popup-blocked' ||
-                e.code === 'auth/operation-not-supported-in-this-environment')) {
+      var blocked = e && (e.code === 'auth/popup-blocked' ||
+                          e.code === 'auth/operation-not-supported-in-this-environment');
+
+      /* Falling back to redirect inside an installed iOS app would only
+         reproduce the missing-initial-state failure, so say what to do
+         instead of looping through something known not to work. */
+      if (blocked && isStandalone() && isIOS()) {
+        var hint = {
+          code: 'auth/popup-blocked-in-app',
+          message: 'The installed app could not open the sign-in window. ' +
+                   'Open the same address in Safari, sign in there, and the ' +
+                   'installed app will pick up the session.'
+        };
+        recordError('popup', hint);
+        notifyError();
+        return Promise.reject(hint);
+      }
+
+      if (blocked) {
+        try { localStorage.setItem(PENDING_KEY, String(Date.now())); } catch (err) {}
         return firebase.auth().signInWithRedirect(provider);
       }
+
+      /* Closing the window yourself is not a failure worth reporting. */
+      if (e && (e.code === 'auth/popup-closed-by-user' ||
+                e.code === 'auth/cancelled-popup-request')) {
+        throw e;
+      }
       recordError('popup', e);
+      notifyError();
       throw e;
     });
   }
@@ -280,6 +335,7 @@ App.auth = (function () {
     onError: onError,
     notifyError: notifyError,
     pendingRedirect: pendingRedirect,
+    scrubRedirectState: scrubRedirectState,
     explain: explain,
     clearError: clearError,
     recordError: recordError,
