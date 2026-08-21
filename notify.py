@@ -30,6 +30,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SERVICE_ACCOUNT = os.path.join(HERE, 'serviceAccount.json')
 
+# Where a tapped notification should open. Absolute, because the click is
+# handled outside any page that could resolve a relative path.
+APP_URL = os.environ.get('BUYBYE_APP_URL', 'https://thebuginneedoffixing.github.io/Buybye')
+
 SCOPES = ['https://www.googleapis.com/auth/cloud-platform',
           'https://www.googleapis.com/auth/datastore']
 
@@ -200,8 +204,8 @@ def send(creds, project_id, token, title, body, dry_run):
         'token': token,
         'notification': {'title': title, 'body': body},
         'webpush': {
-            'notification': {'icon': '/Buybye/assets/icon.svg', 'tag': 'buybye'},
-            'fcm_options': {'link': '/Buybye/'},
+            'notification': {'icon': APP_URL + '/assets/icon.svg', 'tag': 'buybye'},
+            'fcm_options': {'link': APP_URL + '/'},
         },
     }}
     r = requests.post(url, json=payload,

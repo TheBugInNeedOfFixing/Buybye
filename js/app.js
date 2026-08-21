@@ -64,6 +64,18 @@ App.app = (function () {
         '</div>';
     }
 
+    /* A saved session takes a moment to load. Showing sign-in buttons
+       before then invites someone to sign in when they already are. */
+    if (!App.auth.hasResolved()) {
+      host.innerHTML =
+        '<div class="auth-wrap">' +
+          '<div class="brand">BuyBye</div>' +
+          '<p class="brand-sub">Know what things really cost you</p>' +
+          '<p class="tiny muted center">Checking sign-in…</p>' +
+        '</div>';
+      return;
+    }
+
     host.innerHTML =
       '<div class="auth-wrap">' +
         '<div class="brand">BuyBye</div>' +
@@ -145,6 +157,9 @@ App.app = (function () {
         if (user) {
           store.update(function (s) { s.ui.authSeen = true; }, { skipSync: true, skipRender: true });
           if (current === 'auth') route();
+        } else if (current === 'auth') {
+          renderAuth();
+          bindAuth();
         }
         renderCurrent();
       });

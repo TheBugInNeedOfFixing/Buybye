@@ -6,6 +6,7 @@ window.App = window.App || {};
 App.auth = (function () {
   var app = null;
   var ready = false;
+  var resolved = false;
   var listeners = [];
   var user = null;
   var initError = null;
@@ -38,6 +39,10 @@ App.auth = (function () {
       app = firebase.initializeApp(window.FIREBASE_CONFIG);
       firebase.auth().onAuthStateChanged(function (u) {
         user = u;
+        /* Firebase restores a saved session asynchronously. Until this has
+           fired at least once, currentUser() being null means "not known
+           yet", not "signed out" — and anything rendering from it will lie. */
+        resolved = true;
         if (u) clearError();
         listeners.forEach(function (fn) {
           try { fn(u); } catch (e) { console.error(e); }
@@ -235,6 +240,10 @@ App.auth = (function () {
 
   function currentUser() { return user; }
 
+  /* True once the signed-in state is actually known. Without Firebase there
+     is nothing to wait for, so that counts as resolved. */
+  function hasResolved() { return resolved || !available(); }
+
   function onChange(fn) {
     listeners.push(fn);
     if (ready) fn(user);
@@ -278,6 +287,7 @@ App.auth = (function () {
     isStandalone: isStandalone,
     signOut: signOut,
     currentUser: currentUser,
+    hasResolved: hasResolved,
     onChange: onChange,
     db: db,
     messaging: messaging,

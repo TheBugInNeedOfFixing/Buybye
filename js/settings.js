@@ -119,6 +119,12 @@ App.settings = (function () {
   /* ---------- account / notifications / data ---------- */
 
   function accountHTML() {
+    /* Offering a sign-in button while the saved session is still loading
+       invites someone to sign in when they already are. */
+    if (!App.auth.hasResolved()) {
+      return '<p class="tiny muted" style="margin:0">Checking sign-in…</p>';
+    }
+
     var user = App.auth.currentUser();
     if (user) {
       var status = App.sync.getStatus();
@@ -170,6 +176,21 @@ App.settings = (function () {
 
     var s = ui.sheet('More', body);
     App.push.bindPanel(s.el);
+
+    /* The sheet is built once, so without this the account panel keeps
+       showing whatever was true the instant it opened. */
+    function refreshAccount() {
+      var slot = s.el.querySelector('[data-account]');
+      if (slot) slot.innerHTML = accountHTML();
+    }
+    var stopAuth = App.auth.onChange(refreshAccount);
+    var stopSync = App.sync.onStatus(refreshAccount);
+    var origClose = s.close;
+    s.close = function () {
+      if (stopAuth) stopAuth();
+      if (stopSync) stopSync();
+      origClose();
+    };
 
     ui.on(s.el, '[data-signin]', 'click', function () {
       App.auth.signInWithGoogle().catch(function (e) {
