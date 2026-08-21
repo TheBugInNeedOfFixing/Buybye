@@ -58,10 +58,27 @@ App.auth = (function () {
          having thrown away the credential — and any error with it. */
       firebase.auth().getRedirectResult()
         .then(function (result) {
-          if (result && result.user) clearError();
+          if (result && result.user) {
+            clearError();
+            clearPending();
+            return;
+          }
+          /* We started a redirect and came back with no session and no
+             error thrown. That is what a browser blocking the sign-in
+             storage looks like: silent, and invisible without this. */
+          if (pendingRedirect()) {
+            clearPending();
+            recordError('redirect-empty', {
+              code: 'auth/redirect-returned-empty',
+              message: 'Returned from Google without a session.'
+            });
+            notifyError();
+          }
         })
         .catch(function (e) {
+          clearPending();
           recordError('redirect', e);
+          notifyError();
         });
 
       return true;
@@ -91,6 +108,23 @@ App.auth = (function () {
   }
 
   var ERROR_KEY = 'buybye.authError';
+  var PENDING_KEY = 'buybye.authPending';
+
+  function pendingRedirect() {
+    try {
+      var raw = localStorage.getItem(PENDING_KEY);
+      if (!raw) return false;
+      var age = Date.now() - Number(raw);
+      /* Anything older than ten minutes is a stale marker, not this trip.
+         Returns a boolean deliberately: an age of zero is legitimate on a
+         fast return, and would read as false if returned as a number. */
+      return age >= 0 && age < 600000;
+    } catch (e) { return false; }
+  }
+
+  function clearPending() {
+    try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
+  }
 
   function recordError(stage, e) {
     var detail = {
@@ -102,6 +136,18 @@ App.auth = (function () {
     console.error('BuyBye auth [' + stage + ']:', detail.code, detail.message);
     try { localStorage.setItem(ERROR_KEY, JSON.stringify(detail)); } catch (err) {}
     return detail;
+  }
+
+  var errorListeners = [];
+
+  function onError(fn) { errorListeners.push(fn); }
+
+  function notifyError() {
+    var err = lastError();
+    if (!err) return;
+    errorListeners.forEach(function (fn) {
+      try { fn(err); } catch (e) {}
+    });
   }
 
   function clearError() {
@@ -137,6 +183,10 @@ App.auth = (function () {
       'The network request failed. Check the connection and try again.',
     'auth/invalid-api-key':
       'The Firebase API key in this build is not valid.',
+    'auth/redirect-returned-empty':
+      'The browser came back from Google without keeping the sign-in session. ' +
+      'Safari blocks the cross-site storage this needs when the app and the ' +
+      'sign-in service sit on different domains.',
     'auth/internal-error':
       'Firebase reported an internal error completing the sign-in.'
   };
@@ -161,6 +211,7 @@ App.auth = (function () {
 
     clearError();
     if (prefersRedirect()) {
+      try { localStorage.setItem(PENDING_KEY, String(Date.now())); } catch (e) {}
       return firebase.auth().signInWithRedirect(provider).catch(function (e) {
         recordError('redirect-start', e);
         throw e;
@@ -217,6 +268,9 @@ App.auth = (function () {
     init: init,
     signInWithGoogle: signInWithGoogle,
     lastError: lastError,
+    onError: onError,
+    notifyError: notifyError,
+    pendingRedirect: pendingRedirect,
     explain: explain,
     clearError: clearError,
     recordError: recordError,

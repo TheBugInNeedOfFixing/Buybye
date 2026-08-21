@@ -149,6 +149,13 @@ App.app = (function () {
         renderCurrent();
       });
 
+      /* A guest who signs in from Settings never sees the login screen
+         again, so an auth failure there would otherwise be invisible. */
+      App.auth.onError(function (err) {
+        App.push.showBanner('Sign-in failed. ' + App.auth.explain(err));
+      });
+      App.auth.notifyError();
+
       App.push.startTimer();
       registerServiceWorker();
     }
