@@ -38,11 +38,32 @@ App.auth = (function () {
       app = firebase.initializeApp(window.FIREBASE_CONFIG);
       firebase.auth().onAuthStateChanged(function (u) {
         user = u;
+        if (u) clearError();
         listeners.forEach(function (fn) {
           try { fn(u); } catch (e) { console.error(e); }
         });
       });
       ready = true;
+
+      /* Keep the session across launches. IndexedDB can be unavailable in
+         private browsing, so fall back rather than failing sign-in. */
+      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .catch(function () {
+          return firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION);
+        })
+        .catch(function () {});
+
+      /* A redirect sign-in only completes when the result is collected on
+         the way back in. Without this the app returns to the login screen
+         having thrown away the credential — and any error with it. */
+      firebase.auth().getRedirectResult()
+        .then(function (result) {
+          if (result && result.user) clearError();
+        })
+        .catch(function (e) {
+          recordError('redirect', e);
+        });
+
       return true;
     } catch (e) {
       initError = e && e.message;
@@ -51,10 +72,80 @@ App.auth = (function () {
     }
   }
 
-  function isStandaloneIOS() {
-    var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    return iOS && (window.navigator.standalone === true ||
-      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
+  function isStandalone() {
+    return window.navigator.standalone === true ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  }
+
+  /* Popups are unreliable on phones generally, not just installed iOS: a
+     Safari tab may block the window, and an installed app has nowhere to
+     put it. Redirect is the safer path for anything touch-driven. */
+  function prefersRedirect() {
+    var mobile = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
+    var touch = navigator.maxTouchPoints > 1;
+    return mobile || touch || isStandalone();
+  }
+
+  var ERROR_KEY = 'buybye.authError';
+
+  function recordError(stage, e) {
+    var detail = {
+      stage: stage,
+      code: (e && e.code) || '',
+      message: (e && e.message) || String(e),
+      at: Date.now()
+    };
+    console.error('BuyBye auth [' + stage + ']:', detail.code, detail.message);
+    try { localStorage.setItem(ERROR_KEY, JSON.stringify(detail)); } catch (err) {}
+    return detail;
+  }
+
+  function clearError() {
+    try { localStorage.removeItem(ERROR_KEY); } catch (e) {}
+  }
+
+  /* Survives the redirect, so the login screen can explain what went wrong
+     instead of silently showing itself again. */
+  function lastError() {
+    try {
+      var raw = localStorage.getItem(ERROR_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  /* Firebase error codes are opaque to anyone who did not write them.
+     Translate the ones this app can realistically hit. */
+  var EXPLAIN = {
+    'auth/unauthorized-domain':
+      'This web address is not on the project's authorized domain list.',
+    'auth/web-storage-unsupported':
+      'The browser is blocking the storage the sign-in needs. Private browsing, ' +
+      'or blocked cross-site data, will both do this.',
+    'auth/operation-not-supported-in-this-environment':
+      'This browser will not run the sign-in method the app tried to use.',
+    'auth/popup-blocked':
+      'The browser blocked the sign-in window.',
+    'auth/popup-closed-by-user':
+      'The sign-in window closed before it finished.',
+    'auth/cancelled-popup-request':
+      'Another sign-in was already in progress.',
+    'auth/network-request-failed':
+      'The network request failed. Check the connection and try again.',
+    'auth/invalid-api-key':
+      'The Firebase API key in this build is not valid.',
+    'auth/internal-error':
+      'Firebase reported an internal error completing the sign-in.'
+  };
+
+  function explain(err) {
+    if (!err) return '';
+    if (EXPLAIN[err.code]) return EXPLAIN[err.code];
+    /* Storage partitioning usually surfaces without a helpful code. */
+    if (/storage|cookie|third.party/i.test(err.message || '')) {
+      return 'The browser blocked the storage the sign-in needs, most likely ' +
+             'because it restricts cross-site data.';
+    }
+    return err.message || 'Something went wrong during sign-in.';
   }
 
   function signInWithGoogle() {
@@ -64,9 +155,22 @@ App.auth = (function () {
     var provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
 
-    /* Popups are unreliable inside an installed iOS PWA. */
-    if (isStandaloneIOS()) return firebase.auth().signInWithRedirect(provider);
-    return firebase.auth().signInWithPopup(provider);
+    clearError();
+    if (prefersRedirect()) {
+      return firebase.auth().signInWithRedirect(provider).catch(function (e) {
+        recordError('redirect-start', e);
+        throw e;
+      });
+    }
+    return firebase.auth().signInWithPopup(provider).catch(function (e) {
+      /* Some desktop setups block the popup; fall back rather than dead-end. */
+      if (e && (e.code === 'auth/popup-blocked' ||
+                e.code === 'auth/operation-not-supported-in-this-environment')) {
+        return firebase.auth().signInWithRedirect(provider);
+      }
+      recordError('popup', e);
+      throw e;
+    });
   }
 
   function signOut() {
@@ -108,6 +212,12 @@ App.auth = (function () {
     reason: reason,
     init: init,
     signInWithGoogle: signInWithGoogle,
+    lastError: lastError,
+    explain: explain,
+    clearError: clearError,
+    recordError: recordError,
+    prefersRedirect: prefersRedirect,
+    isStandalone: isStandalone,
     signOut: signOut,
     currentUser: currentUser,
     onChange: onChange,

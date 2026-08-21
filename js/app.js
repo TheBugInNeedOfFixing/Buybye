@@ -49,10 +49,26 @@ App.app = (function () {
     var host = screenEl('auth');
     var can = App.auth.available();
 
+    /* A failed redirect lands back here with no other trace, so say what
+       happened rather than just showing the same buttons again. */
+    var err = App.auth.lastError();
+    var errHTML = '';
+    if (err) {
+      errHTML =
+        '<div class="notice" style="margin-bottom:10px">' +
+          '<b>Sign-in did not complete.</b><br>' +
+          f.escape(App.auth.explain(err)) +
+          '<div class="tiny muted" style="margin-top:8px">' +
+            f.escape(err.code || err.message || '') + '</div>' +
+          '<button class="act" data-auth-dismiss>Dismiss</button>' +
+        '</div>';
+    }
+
     host.innerHTML =
       '<div class="auth-wrap">' +
         '<div class="brand">BuyBye</div>' +
         '<p class="brand-sub">Know what things really cost you</p>' +
+        errHTML +
         (can
           ? '<button class="btn btn-google" data-google>' + App.settings.googleMark() +
             'Continue with Google</button>'
@@ -71,6 +87,11 @@ App.app = (function () {
       App.auth.signInWithGoogle().catch(function (e) {
         ui.toast(e && e.message ? e.message : 'Sign-in failed');
       });
+    });
+    ui.on(host, '[data-auth-dismiss]', 'click', function () {
+      App.auth.clearError();
+      renderAuth();
+      bindAuth();
     });
     ui.on(host, '[data-guest]', 'click', function () {
       store.update(function (s) { s.ui.authSeen = true; });
