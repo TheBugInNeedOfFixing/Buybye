@@ -10,7 +10,11 @@
    is gitignored and must never be committed. */
 window.FIREBASE_CONFIG = {
   apiKey:            'AIzaSyB_iUynSgb76C1l1vYTvO61Kukvj5Ia7P0',
-  authDomain:        'buybye-6aef3.firebaseapp.com',
+  /* The hosting domain, deliberately, not the default firebaseapp.com.
+     Sign-in has to run on the same origin as the app: on a different
+     one Safari treats the handshake as cross-site and drops the
+     session on the way back, silently and with no error. */
+  authDomain:        'buybye-6aef3.web.app',
   projectId:         'buybye-6aef3',
   storageBucket:     'buybye-6aef3.firebasestorage.app',
   messagingSenderId: '555191711109',

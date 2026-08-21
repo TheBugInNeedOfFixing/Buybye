@@ -32,7 +32,7 @@ SERVICE_ACCOUNT = os.path.join(HERE, 'serviceAccount.json')
 
 # Where a tapped notification should open. Absolute, because the click is
 # handled outside any page that could resolve a relative path.
-APP_URL = os.environ.get('BUYBYE_APP_URL', 'https://thebuginneedoffixing.github.io/Buybye')
+APP_URL = os.environ.get('BUYBYE_APP_URL', 'https://buybye-6aef3.web.app')
 
 SCOPES = ['https://www.googleapis.com/auth/cloud-platform',
           'https://www.googleapis.com/auth/datastore']

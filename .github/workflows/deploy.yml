@@ -1,0 +1,50 @@
+# Publishes to Firebase Hosting on every push to main.
+#
+# Hosting there rather than on GitHub Pages is what makes Google sign-in
+# work on iOS: the app is served from the same origin as authDomain, so
+# Safari sees the handshake as first-party instead of cross-site and stops
+# discarding the session on the way back.
+#
+# Runs the same deploy.py used locally, so there is one deploy path rather
+# than two that can drift. Needs the FIREBASE_SERVICE_ACCOUNT secret.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: buybye-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install --quiet google-auth requests
+
+      - name: Check the secret is present
+        env:
+          KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT is not set. Add it under"
+            echo "::error::Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          echo "secret present (${#KEY} characters)"
+
+      - name: Deploy
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: python deploy.py
