@@ -116,7 +116,7 @@ Three tiers, and it's worth being clear about which is which:
 Firestore and posts anything due to FCM.
 
 ```bash
-pip install google-auth requests
+pip install google-auth requests tzdata
 ```
 
 Download a service account key from **Project settings → Service accounts →
@@ -127,13 +127,38 @@ then check what it would do:
 python notify.py --dry-run
 ```
 
-Run it for real every 15 minutes from Task Scheduler — program `pythonw.exe`,
-argument the full path to `notify.py`. It only fires reminders due in the last
-20 minutes and remembers what it already sent, so a missed run won't spam you.
+It takes credentials from `GOOGLE_SERVICE_ACCOUNT_JSON` if that is set, and
+otherwise from `serviceAccount.json` beside it — the same file runs locally
+and in the cloud with no changes.
 
-This means reminders arrive while your PC is on. To cut the PC loose, move the
-same file to a Google Cloud Function on a Cloud Scheduler cron — it can be
-pasted straight into the console's inline editor, still with no Node involved.
+### Where it runs
+
+**On GitHub (the default).** `.github/workflows/reminders.yml` runs it every
+15 minutes on GitHub's servers, so reminders arrive with every machine of
+yours switched off. It needs one repository secret, `FIREBASE_SERVICE_ACCOUNT`,
+holding the whole contents of `serviceAccount.json`: **Settings → Secrets and
+variables → Actions → New repository secret**. Actions minutes are free and
+unlimited on public repositories.
+
+Two things to know about GitHub's scheduler. It delays runs when busy, so a
+reminder can land some minutes late — hence the 45-minute grace window, and
+the deliberately off-the-hour cron. And it **disables scheduled workflows
+after 60 days without repository activity**, emailing you first; any commit
+resets that clock.
+
+**On your PC as well (optional).** A Task Scheduler entry running
+`pythonw.exe notify.py` every 15 minutes fires more punctually when the
+machine happens to be on. Running both is safe.
+
+Nothing gets sent twice, because the already-sent guard lives on the user's
+Firestore document rather than on either machine's disk. Whichever host gets
+there first claims the reminder; every other host reads the guard and skips.
+A reminder is claimed only after a send actually succeeds, so a total failure
+is retried on the next run instead of being silently swallowed.
+
+Times are evaluated in **the user's own timezone**, recorded by the app when
+it saves the schedule. Without that a cloud runner would read its own UTC
+clock and fire a 9:00 PM reminder at the wrong hour.
 
 ## Putting it on your phone
 
@@ -180,7 +205,7 @@ js/settings.js          settings, account, data
 js/app.js               routing and boot
 sw.js                   offline cache + push display
 firebase-messaging-sw.js  FCM background handler (gets config from push.js)
-notify.py               scheduled push sender
+notify.py               scheduled push sender (local or CI)
 build.py                single-file bundler
 ```
 

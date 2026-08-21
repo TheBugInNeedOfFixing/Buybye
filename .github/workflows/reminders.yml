@@ -1,0 +1,55 @@
+# Sends BuyBye reminder pushes from GitHub's servers, so notifications
+# arrive whether or not any of your own machines is switched on.
+#
+# Needs one repository secret, FIREBASE_SERVICE_ACCOUNT, holding the full
+# contents of serviceAccount.json. That file is gitignored and must never
+# be committed; the secret is the supported way to hand it over.
+#
+# Note that GitHub delays scheduled workflows when it is busy, so a run can
+# land some minutes late. notify.py allows for that with a grace window and
+# keeps its already-sent guard in Firestore, so a late or repeated run will
+# not deliver the same reminder twice.
+
+name: Send reminders
+
+on:
+  schedule:
+    # Every 15 minutes, deliberately off the hour: GitHub's scheduler is
+    # most congested at :00, and off-peak minutes are dispatched sooner.
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:        # lets you run it by hand from the Actions tab
+
+concurrency:
+  # Never let a slow run overlap the next one.
+  group: buybye-reminders
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install --quiet google-auth requests tzdata
+
+      - name: Check the secret is present
+        env:
+          KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT is not set. Add it under"
+            echo "::error::Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          echo "secret present (${#KEY} characters)"
+
+      - name: Send anything due
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: python notify.py
